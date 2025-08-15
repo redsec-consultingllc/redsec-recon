@@ -2,3 +2,4 @@ flask
 whois
 requests
 fpdf
+gunicorn
