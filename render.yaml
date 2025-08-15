@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: redsec-recon
+    env: python
+    buildCommand: ""
+    startCommand: gunicorn app:app
+    plan: free
+    envVars:
+      - key: SHODAN_API_KEY
+        value: tJlOBhA9Q2ifpbZLhdybNApGrspTrHe3

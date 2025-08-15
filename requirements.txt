@@ -1,0 +1,4 @@
+flask
+whois
+requests
+fpdf
