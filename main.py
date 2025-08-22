@@ -60,23 +60,32 @@ def check_dehashed(email):
 def generate_pdf(domain, data):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="RedSec Recon Risk Report", ln=True, align='C')
-    pdf.cell(200, 10, txt=f"Target: {domain}", ln=True, align='C')
+    
+    # Title
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, "RedSec Recon Risk Report", ln=True, align='C')
+    
+    # Subtitle
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(0, 10, f"Target: {domain}", ln=True, align='C')
     pdf.ln(10)
 
+    # Section-wise rendering
     for section, content in data.items():
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(200, 10, txt=section, ln=True)
-        pdf.set_font("Arial", size=10)
+        pdf.set_font("Arial", 'B', 14)
+        pdf.set_text_color(0)
+        pdf.cell(0, 10, section, ln=True)
+        pdf.set_font("Arial", '', 11)
+
         if isinstance(content, dict):
             for k, v in content.items():
-                pdf.multi_cell(0, 10, f"{k}: {v}")
+                pdf.multi_cell(0, 8, f"{k}: {v}", border=0)
         elif isinstance(content, list):
             for item in content:
-                pdf.multi_cell(0, 10, json.dumps(item, indent=2))
+                pdf.multi_cell(0, 8, json.dumps(item, indent=2), border=0)
         else:
-            pdf.multi_cell(0, 10, str(content))
+            pdf.multi_cell(0, 8, str(content), border=0)
+        
         pdf.ln(5)
 
     os.makedirs("output", exist_ok=True)
