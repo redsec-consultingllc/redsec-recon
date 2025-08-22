@@ -26,15 +26,16 @@ def get_domain_info(domain):
     try:
         w = whois.whois(domain)
         return {
-            "Domain Name": w.domain_name,
-            "Registrar": w.registrar,
-            "Creation Date": str(w.creation_date),
-            "Expiration Date": str(w.expiration_date),
-            "Name Servers": w.name_servers
+            "Domain Name": w.domain_name or "N/A",
+            "Registrar": w.registrar or "N/A",
+            "Created": str(w.creation_date) if w.creation_date else "N/A",
+            "Expires": str(w.expiration_date) if w.expiration_date else "N/A",
+            "Name Servers": w.name_servers or []
         }
     except Exception as e:
         app.logger.error(f"WHOIS lookup failed: {e}")
         return {"Error": "WHOIS lookup failed"}
+
 
 def check_shodan(domain):
     try:
