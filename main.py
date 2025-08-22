@@ -4,13 +4,14 @@ import requests
 import socket
 import json
 from fpdf import FPDF
+from flask import Flask, request, send_file, render_template
 
-# Load SHODAN API Key from environment variable
+# Load SHODAN API key from environment variable
 SHODAN_API_KEY = os.getenv("SHODAN_API_KEY")
 
 app = Flask(__name__)
 
-# ---------- Recon Logic ----------
+# ------------------ Recon Logic ------------------
 
 def get_domain_info(domain):
     try:
@@ -83,23 +84,28 @@ def generate_pdf(domain, data):
     pdf.output(output_path)
     return output_path
 
-# ---------- Flask Routes ----------
+# ------------------ Flask Routes ------------------
 
-@app.route("/", methods=["GET", "POST"])
-def home():
-    if request.method == "POST":
-        domain = request.form.get("domain")
-        email = request.form.get("email")
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-        report_data = {
-            "WHOIS Info": get_domain_info(domain),
-            "Shodan Results": check_shodan(domain),
-            "LeakCheck Results": check_leakcheck(email),
-            "DeHashed Results": check_dehashed(email)
-        }
+@app.route('/scan', methods=['POST'])
+def scan():
+    domain = request.form.get('domain')
+    email = request.form.get('email')
 
-        pdf_path = generate_pdf(domain, report_data)
-        return send_file(pdf_path, as_attachment=True)
+    results = {
+        "WHOIS Info": get_domain_info(domain),
+        "Shodan Results": check_shodan(domain),
+        "LeakCheck Results": check_leakcheck(email),
+        "DeHashed Results": check_dehashed(email)
+    }
 
-    return render_template("index.html")
+    pdf_path = generate_pdf(domain, results)
+    return send_file(pdf_path, as_attachment=True)
 
+# ------------------ Run App ------------------
+
+if __name__ == '__main__':
+    app.run(debug=True)
