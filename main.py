@@ -4,9 +4,14 @@ import requests
 import socket
 import json
 from fpdf import FPDF
+from flask import Flask, request, send_file, render_template
+
+# Load API key from environment
 SHODAN_API_KEY = os.getenv("SHODAN_API_KEY")
 
-# ---------- Helper Functions ----------
+app = Flask(__name__)
+
+# ---------- Recon Logic ----------
 
 def get_domain_info(domain):
     try:
@@ -79,14 +84,23 @@ def generate_pdf(domain, data):
     pdf.output(output_path)
     return output_path
 
-# ---------- Run Recon Logic ----------
+# ---------- Flask Routes ----------
 
-def run_recon(domain, email):
-    report_data = {
-        "WHOIS Info": get_domain_info(domain),
-        "Shodan Results": check_shodan(domain),
-        "LeakCheck Results": check_leakcheck(email),
-        "DeHashed Results": check_dehashed(email)
-    }
-    report_path = generate_pdf(domain, report_data)
-    return report_path
+@app.route("/", methods=["GET", "POST"])
+def home():
+    if request.method == "POST":
+        domain = request.form.get("domain")
+        email = request.form.get("email")
+
+        report_data = {
+            "WHOIS Info": get_domain_info(domain),
+            "Shodan Results": check_shodan(domain),
+            "LeakCheck Results": check_leakcheck(email),
+            "DeHashed Results": check_dehashed(email)
+        }
+
+        pdf_path = generate_pdf(domain, report_data)
+        return send_file(pdf_path, as_attachment=True)
+
+    return render_template("index.html")
+
