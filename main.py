@@ -5,13 +5,22 @@ import socket
 import json
 from fpdf import FPDF
 from flask import Flask, request, send_file, render_template
+from datetime import datetime
 
-# Load SHODAN API key from environment variable
 SHODAN_API_KEY = os.getenv("SHODAN_API_KEY")
 
 app = Flask(__name__)
 
-# ------------------ Recon Logic ------------------
+# ---------- Logging ----------
+import logging
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+handler.setFormatter(formatter)
+app.logger.addHandler(handler)
+app.logger.setLevel(logging.DEBUG)
+
+# ---------- Recon Functions ----------
 
 def get_domain_info(domain):
     try:
@@ -23,7 +32,8 @@ def get_domain_info(domain):
             "Expiration Date": str(w.expiration_date),
             "Name Servers": w.name_servers
         }
-    except:
+    except Exception as e:
+        app.logger.error(f"WHOIS lookup failed: {e}")
         return {"Error": "WHOIS lookup failed"}
 
 def check_shodan(domain):
@@ -32,7 +42,8 @@ def check_shodan(domain):
         url = f"https://api.shodan.io/shodan/host/{ip}?key={SHODAN_API_KEY}"
         response = requests.get(url)
         return response.json()
-    except:
+    except Exception as e:
+        app.logger.error(f"Shodan lookup failed: {e}")
         return {"Error": "Shodan lookup failed"}
 
 def check_leakcheck(email):
@@ -42,7 +53,8 @@ def check_leakcheck(email):
             return resp.json()
         else:
             return {"Error": "LeakCheck lookup failed"}
-    except:
+    except Exception as e:
+        app.logger.error(f"LeakCheck error: {e}")
         return {"Error": "LeakCheck API error"}
 
 def check_dehashed(email):
@@ -54,76 +66,59 @@ def check_dehashed(email):
             return {"Info": "Results available. Visit DeHashed.com manually for more details."}
         else:
             return {"Error": "DeHashed lookup failed or blocked"}
-    except:
+    except Exception as e:
+        app.logger.error(f"DeHashed error: {e}")
         return {"Error": "DeHashed request failed"}
 
 def generate_pdf(domain, data):
     pdf = FPDF()
     pdf.add_page()
-
-    # Title
-    pdf.set_font("Arial", 'B', 16)
+    pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, "RedSec Recon Risk Report", ln=True, align='C')
-    pdf.set_font("Arial", '', 12)
+    pdf.set_font("Arial", size=12)
     pdf.cell(0, 10, f"Target: {domain}", ln=True, align='C')
+    pdf.cell(0, 10, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align='C')
     pdf.ln(10)
 
     for section, content in data.items():
-        # Section Title
-        pdf.set_font("Arial", 'B', 14)
+        pdf.set_font("Arial", "B", 14)
         pdf.cell(0, 10, section, ln=True)
-        pdf.set_font("Arial", '', 11)
-
-        try:
-            if isinstance(content, dict):
-                for key, value in content.items():
-                    val = str(value).replace('\n', ' ')
-                    pdf.multi_cell(0, 8, f"  • {key}: {val}", border=0)
-
-            elif isinstance(content, list):
-                for i, item in enumerate(content, 1):
-                    line = json.dumps(item, indent=2) if isinstance(item, (dict, list)) else str(item)
-                    pdf.multi_cell(0, 8, f"  [{i}] {line}", border=0)
-
-            else:
-                pdf.multi_cell(0, 8, f"  {str(content)}", border=0)
-
-        except Exception as e:
-            pdf.set_text_color(200, 0, 0)
-            pdf.multi_cell(0, 8, f"  Error rendering section: {str(e)}", border=0)
-            pdf.set_text_color(0)
-
-        pdf.ln(6)
+        pdf.set_font("Arial", size=10)
+        if isinstance(content, dict):
+            for k, v in content.items():
+                pdf.multi_cell(0, 10, f"{k}: {v}")
+        elif isinstance(content, list):
+            for item in content:
+                pdf.multi_cell(0, 10, json.dumps(item, indent=2))
+        else:
+            pdf.multi_cell(0, 10, str(content))
+        pdf.ln(5)
 
     os.makedirs("output", exist_ok=True)
     output_path = f"output/RedSec-Recon-{domain}.pdf"
     pdf.output(output_path)
     return output_path
 
+# ---------- Routes ----------
 
-
-# ------------------ Flask Routes ------------------
-
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
 
 @app.route('/scan', methods=['POST'])
 def scan():
-    domain = request.form.get('domain')
-    email = request.form.get('email')
-
-    results = {
-        "WHOIS Info": get_domain_info(domain),
-        "Shodan Results": check_shodan(domain),
-        "LeakCheck Results": check_leakcheck(email),
-        "DeHashed Results": check_dehashed(email)
-    }
-
-    pdf_path = generate_pdf(domain, results)
-    return send_file(pdf_path, as_attachment=True)
-
-# ------------------ Run App ------------------
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    try:
+        domain = request.form['domain']
+        email = request.form['email']
+        app.logger.info(f"Scanning {domain} and {email}")
+        report_data = {
+            "WHOIS Info": get_domain_info(domain),
+            "Shodan Results": check_shodan(domain),
+            "LeakCheck Results": check_leakcheck(email),
+            "DeHashed Results": check_dehashed(email)
+        }
+        pdf_path = generate_pdf(domain, report_data)
+        return send_file(pdf_path, as_attachment=True)
+    except Exception as e:
+        app.logger.error("Unexpected error during scan", exc_info=True)
+        return render_template('index.html', error="Internal error occurred. Check logs.")
