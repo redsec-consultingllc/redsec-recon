@@ -73,31 +73,42 @@ def check_dehashed(email):
 def generate_pdf(domain, data):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
+
+    pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "RedSec Recon Risk Report", ln=True, align='C')
+
     pdf.set_font("Arial", size=12)
     pdf.cell(0, 10, f"Target: {domain}", ln=True, align='C')
     pdf.cell(0, 10, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align='C')
     pdf.ln(10)
 
     for section, content in data.items():
-        pdf.set_font("Arial", "B", 14)
+        pdf.set_font("Arial", 'B', 14)
+        pdf.set_text_color(0)
         pdf.cell(0, 10, section, ln=True)
+
         pdf.set_font("Arial", size=10)
+        pdf.set_text_color(50, 50, 50)
+
         if isinstance(content, dict):
             for k, v in content.items():
-                pdf.multi_cell(0, 10, f"{k}: {v}")
+                k = str(k).replace('\n', ' ')
+                v = str(v).replace('\n', ' ')
+                pdf.multi_cell(0, 8, f"   - {k}: {v}")
         elif isinstance(content, list):
-            for item in content:
-                pdf.multi_cell(0, 10, json.dumps(item, indent=2))
+            for i, item in enumerate(content, 1):
+                line = json.dumps(item, indent=2) if isinstance(item, (dict, list)) else str(item)
+                pdf.multi_cell(0, 8, f"   [{i}] {line}")
         else:
-            pdf.multi_cell(0, 10, str(content))
+            pdf.multi_cell(0, 8, f"   {str(content)}")
+
         pdf.ln(5)
 
     os.makedirs("output", exist_ok=True)
     output_path = f"output/RedSec-Recon-{domain}.pdf"
     pdf.output(output_path)
     return output_path
+
 
 # ---------- Routes ----------
 
