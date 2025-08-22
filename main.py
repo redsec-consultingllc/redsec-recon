@@ -60,38 +60,39 @@ def check_dehashed(email):
 def generate_pdf(domain, data):
     pdf = FPDF()
     pdf.add_page()
-    
+
     # Title
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "RedSec Recon Risk Report", ln=True, align='C')
-    
-    # Subtitle
     pdf.set_font("Arial", '', 12)
-    pdf.cell(0, 10, f"Target: {domain}", ln=True, align='C')
+    pdf.cell(0, 10, f"Target Domain: {domain}", ln=True, align='C')
     pdf.ln(10)
 
-    # Section-wise rendering
     for section, content in data.items():
+        # Section Header
         pdf.set_font("Arial", 'B', 14)
         pdf.set_text_color(0)
         pdf.cell(0, 10, section, ln=True)
         pdf.set_font("Arial", '', 11)
+        pdf.set_text_color(50, 50, 50)
 
         if isinstance(content, dict):
-            for k, v in content.items():
-                pdf.multi_cell(0, 8, f"{k}: {v}", border=0)
+            for key, value in content.items():
+                value_str = str(value).replace('\n', ' ')
+                pdf.multi_cell(0, 8, f"  • {key}: {value_str}", border=0)
         elif isinstance(content, list):
-            for item in content:
-                pdf.multi_cell(0, 8, json.dumps(item, indent=2), border=0)
+            for i, item in enumerate(content, start=1):
+                pdf.multi_cell(0, 8, f"  [{i}] {json.dumps(item, indent=2)}", border=0)
         else:
-            pdf.multi_cell(0, 8, str(content), border=0)
-        
-        pdf.ln(5)
+            pdf.multi_cell(0, 8, f"  {str(content)}", border=0)
+
+        pdf.ln(6)
 
     os.makedirs("output", exist_ok=True)
     output_path = f"output/RedSec-Recon-{domain}.pdf"
     pdf.output(output_path)
     return output_path
+
 
 # ------------------ Flask Routes ------------------
 
