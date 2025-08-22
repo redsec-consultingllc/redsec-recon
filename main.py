@@ -70,6 +70,26 @@ def check_dehashed(email):
     except Exception as e:
         app.logger.error(f"DeHashed error: {e}")
         return {"Error": "DeHashed request failed"}
+def clean_data(data):
+    def simplify(value):
+        if isinstance(value, (list, tuple)):
+            return ', '.join([str(item) for item in value if item])
+        elif isinstance(value, dict):
+            return '; '.join([f"{k}: {simplify(v)}" for k, v in value.items() if v])
+        elif value in [None, "", "null", "N/A"]:
+            return "N/A"
+        else:
+            return str(value)
+
+    cleaned = {}
+    for section, content in data.items():
+        if isinstance(content, dict):
+            cleaned[section] = {k: simplify(v) for k, v in content.items()}
+        elif isinstance(content, list):
+            cleaned[section] = [simplify(item) for item in content]
+        else:
+            cleaned[section] = simplify(content)
+    return cleaned
 
 def generate_pdf(domain, data):
     pdf = FPDF()
@@ -123,12 +143,13 @@ def scan():
         domain = request.form['domain']
         email = request.form['email']
         app.logger.info(f"Scanning {domain} and {email}")
-        report_data = {
+        raw_data = {
             "WHOIS Info": get_domain_info(domain),
             "Shodan Results": check_shodan(domain),
             "LeakCheck Results": check_leakcheck(email),
             "DeHashed Results": check_dehashed(email)
         }
+        report_data = clean_data(raw_data)
         pdf_path = generate_pdf(domain, report_data)
         return send_file(pdf_path, as_attachment=True)
     except Exception as e:
