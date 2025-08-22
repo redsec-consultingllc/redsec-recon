@@ -4,7 +4,7 @@ import requests
 import socket
 import json
 from fpdf import FPDF
-from config import SHODAN_API_KEY
+SHODAN_API_KEY = os.getenv("SHODAN_API_KEY")
 
 # ---------- Helper Functions ----------
 
