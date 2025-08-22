@@ -65,26 +65,33 @@ def generate_pdf(domain, data):
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "RedSec Recon Risk Report", ln=True, align='C')
     pdf.set_font("Arial", '', 12)
-    pdf.cell(0, 10, f"Target Domain: {domain}", ln=True, align='C')
+    pdf.cell(0, 10, f"Target: {domain}", ln=True, align='C')
     pdf.ln(10)
 
     for section, content in data.items():
-        # Section Header
+        # Section Title
         pdf.set_font("Arial", 'B', 14)
-        pdf.set_text_color(0)
         pdf.cell(0, 10, section, ln=True)
         pdf.set_font("Arial", '', 11)
-        pdf.set_text_color(50, 50, 50)
 
-        if isinstance(content, dict):
-            for key, value in content.items():
-                value_str = str(value).replace('\n', ' ')
-                pdf.multi_cell(0, 8, f"  • {key}: {value_str}", border=0)
-        elif isinstance(content, list):
-            for i, item in enumerate(content, start=1):
-                pdf.multi_cell(0, 8, f"  [{i}] {json.dumps(item, indent=2)}", border=0)
-        else:
-            pdf.multi_cell(0, 8, f"  {str(content)}", border=0)
+        try:
+            if isinstance(content, dict):
+                for key, value in content.items():
+                    val = str(value).replace('\n', ' ')
+                    pdf.multi_cell(0, 8, f"  • {key}: {val}", border=0)
+
+            elif isinstance(content, list):
+                for i, item in enumerate(content, 1):
+                    line = json.dumps(item, indent=2) if isinstance(item, (dict, list)) else str(item)
+                    pdf.multi_cell(0, 8, f"  [{i}] {line}", border=0)
+
+            else:
+                pdf.multi_cell(0, 8, f"  {str(content)}", border=0)
+
+        except Exception as e:
+            pdf.set_text_color(200, 0, 0)
+            pdf.multi_cell(0, 8, f"  Error rendering section: {str(e)}", border=0)
+            pdf.set_text_color(0)
 
         pdf.ln(6)
 
@@ -92,6 +99,7 @@ def generate_pdf(domain, data):
     output_path = f"output/RedSec-Recon-{domain}.pdf"
     pdf.output(output_path)
     return output_path
+
 
 
 # ------------------ Flask Routes ------------------
