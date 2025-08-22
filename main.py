@@ -4,9 +4,8 @@ import requests
 import socket
 import json
 from fpdf import FPDF
-from flask import Flask, request, send_file, render_template
 
-# Load API key from environment
+# Load SHODAN API Key from environment variable
 SHODAN_API_KEY = os.getenv("SHODAN_API_KEY")
 
 app = Flask(__name__)
